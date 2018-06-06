@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function
+from contracts import contract, new_contract
 
 import argparse
 import os
@@ -36,24 +37,34 @@ args = parser.parse_args()
 
 # ==== Disk Space ====
 
+new_contract('validate_command', lambda command: isinstance(command, str) and len(command)>=1)
+new_contract('validate_subprocess_return', lambda subprocess_return: isinstance(subprocess_return, str) and len(subprocess_return)>=1)
+@contract(command='validate_command', returns='validate_subprocess_return')
 def subprocess_check_output(command):
-    return subprocess.check_output(command.strip().split(' '))
+
+    subprocess_return =  subprocess.check_output(command.strip().split(' '))
+    return subprocess_return
 
 
+new_contract('validates_byts_reading', lambda byts_reading: isinstance(byts_reading, str) and len(byts_reading)>=1)
+@contract(blocks='int, >=1', returns='validates_byts_reading')
 def bytes_to_readable(blocks):
+
     byts = blocks * 512
     readable_bytes = byts
     count = 0
+    
     while readable_bytes / 1024:
         readable_bytes /= 1024
         count += 1
 
     labels = ['B', 'Kb', 'Mb', 'Gb', 'Tb']
-    return '{:.2f}{}'.format(round(byts/(1024.0**count), 2), labels[count])
+    byts_reading = '{:.2f}{}'.format(round(byts/(1024.0**count), 2), labels[count])
+    
+    return byts_reading
 
-
-def print_tree(file_tree, file_tree_node, path, largest_size, total_size,
-               depth=0):
+@contract(file_tree='dict', file_tree_node='dict', path='str', largest_size='int, >= 0', total_size='int, >= 0 ', depth='int, >= 0')
+def print_tree(file_tree, file_tree_node, path, largest_size, total_size, depth=0):
     percentage = int(file_tree_node['size'] / float(total_size) * 100)
 
     if percentage < args.hide:
@@ -72,7 +83,9 @@ def print_tree(file_tree, file_tree_node, path, largest_size, total_size,
                        total_size, depth + 1)
 
 
+@contract(directory='str', depth='int, >= -1', order='bool')
 def show_space_list(directory='.', depth=-1, order=True):
+    
     abs_directory = os.path.abspath(directory)
 
     cmd = 'du '
